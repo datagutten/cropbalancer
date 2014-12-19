@@ -65,7 +65,7 @@ foreach ($ylist as $y)
 }
 
 
-include 'cropper_topbottom.php';
+require 'cropper_topbottom.php';
 echo "Line positions:\n";
 echo "From left: $fromleft ($lefty)\n";
 echo "From right: $fromright ($righty)\n";
