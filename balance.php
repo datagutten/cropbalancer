@@ -15,7 +15,14 @@ if(!isset($im))
 if(!is_resource($im))
 	die("Invalid image\n");
 
-require 'config.php';
+if(!isset($argv[1]))
+	require 'config_400dpi.php';
+elseif(file_exists("config_{$argv[1]}.php"))
+	require "config_{$argv[1]}.php";
+else
+	die("No config file found\n");
+require 'tools/color.php';
+$colortools=new color;
 
 $width=imagesx($im);
 $height=imagesy($im);
@@ -24,48 +31,54 @@ $height=imagesy($im);
 $max_y=$height-1;
 $max_x=$width-1; //imagesx returns the width. The last position is one less (counted from 0)
 
+$sides=array("Left","Right","Top","Bottom");
 
+$list_loop=array("Left"=>range(0,$xlimit),"Right"=>range($max_x,$max_x-$xlimit),"Top"=>range(0,$ylimit),"Bottom"=>range($max_y,$max_y-$ylimit));
+$list_common=array("Left"=>$vertical_positions,"Right"=>$vertical_positions,"Top"=>$horizontal_positions,"Bottom"=>$horizontal_positions);
 
-foreach ($ylist as $y)
+foreach($sides as $side)
 {
-	if(!isset($fromleft)) //Check if line position from the left has been found on another y position
+	echo $side."\n";
+	foreach($list_common[$side] as $common)
 	{
-		for ($x=5; $x<=$xlimit; $x++)	
+		foreach($list_loop[$side] as $loop)
 		{
-			colorcheck($im,$x,$y,$borderlimit,$pagelimit);
-			$color=imagecolorat($im,$x,$y);
-			/*echo $x.': '.dechex($color);
-			echo "\n";*/
-			/*if($color<$pagelimit && !isset($pageborder_left))
-				$pageborder_left=$x;*/
-			if($color<$borderlimit)
+			if($side=="Top" || $side=="Bottom")
 			{
-				$fromleft=$x;
-				$lefty=$y;
-				break;
+				$pos="X: $common Y: $loop\n";
+				$check=$colortools->colordiff($borderlimit,$color=imagecolorat($im,$common,$loop),$limit_low,$limit_high); //For top and bottom loop y axis
 			}
-		}
-		var_dump($color."<".$borderlimit);
-	}
-	if(!isset($fromright))
-	{
-		for($x=$max_x-1; $x>=$max_x-700; $x--)
-		{
-			$color=imagecolorat($im,$x,$y);
-			//echo $x.': '.dechex($color);
-			//echo "\n";
-			if($color<$borderlimit)
+			else
 			{
-				$fromright=$max_x-$x;
-				$righty=$y;
-				break;
+				$pos="X: $loop Y: $common\n";
+				$check=$colortools->colordiff($borderlimit,$color=imagecolorat($im,$loop,$common),$limit_low,$limit_high); //For left and right loop x axis
+			}
+			if(isset($debug))
+			{
+				echo $pos;
+				echo dechex($color)."\n";
+				print_r($colortools->diff);
+			}
+			if($check===true)
+			{
+				$commons[$side]=$common;
+				$line[$side]=$loop;
+				break 2;
 			}
 		}
 	}
 }
 
+//Some variable renaming to keep old code working
+$from['Right']=$max_x-$line['Right'];
+$from['Bottom']=$max_y-$line['Bottom'];
 
-require 'cropper_topbottom.php';
+$fromleft=$from['Left'];
+$fromright=$from['Right'];
+$fromtop=$from['Top'];
+$frombottom=$from['Bottom'];
+
+
 echo "Line positions:\n";
 echo "From left: $fromleft ($lefty)\n";
 echo "From right: $fromright ($righty)\n";
